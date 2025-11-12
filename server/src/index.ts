@@ -3,90 +3,140 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 
 const app = express();
+const prisma = new PrismaClient();
 
-// Allow requests from the Vite dev server (http://localhost:5173)
-app.use(cors());
+app.use(cors());            // allow requests from Vite (http://localhost:5173) during dev
+app.use(express.json());    // parse JSON bodies
 
-// Parse JSON bodies
-app.use(express.json());
+const PORT = 3000;
 
-// Simple test route
+/** Health check */
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok from API' });
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`);
-});
-
-const prisma = new PrismaClient();
-
-// GET all expenses
-app.get('/api/expenses', async (req, res) => {
-  const expenses = await prisma.expense.findMany({
-    include: { category: true },
-    orderBy: { date: 'asc' },
-  });
-  res.json(expenses);
-});
-
-// DEV ONLY: Seed demo data safely
-app.post('/api/seed', async (req, res) => {
+/** DEV ONLY: Seed demo data (idempotent) */
+app.get('/api/seed', async (_req, res) => {
   try {
-    // 1. Make sure demo user exists
-    let user = await prisma.user.findUnique({
-      where: { email: 'demo@budget.app' },
+    // 1) Ensure demo user exists
+    const user = await prisma.user.upsert({
+      where: { email: 'demo@budget.app' }, // email must be unique in your schema
+      update: {},
+      create: {
+        email: 'demo@budget.app',
+        password: 'demo123', // dev-only; fine for demo
+      },
     });
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: 'demo@budget.app',
-          password: 'demo123', // dev only, ok for now
-        },
-      });
+    // 2) Ensure default categories exist for this user
+    const defaultCats = ['Food', 'Rent', 'Transport', 'Subscriptions', 'Entertainment', 'Other'];
+    for (const name of defaultCats) {
+      const exists = await prisma.category.findFirst({ where: { name, userId: user.id } });
+      if (!exists) {
+        await prisma.category.create({ data: { name, userId: user.id } });
+      }
     }
 
-    // 2. Make sure a 'Food' category exists for this user
-    let foodCategory = await prisma.category.findFirst({
-      where: { name: 'Food', userId: user.id },
-    });
+    // 3) Seed a few expenses only if none exist
+    const count = await prisma.expense.count({ where: { userId: user.id } });
+    if (count === 0) {
+      const [food, rent, transport] = await Promise.all([
+        prisma.category.findFirst({ where: { name: 'Food', userId: user.id } }),
+        prisma.category.findFirst({ where: { name: 'Rent', userId: user.id } }),
+        prisma.category.findFirst({ where: { name: 'Transport', userId: user.id } }),
+      ]);
 
-    if (!foodCategory) {
-      foodCategory = await prisma.category.create({
-        data: {
-          name: 'Food',
-          userId: user.id,
-        },
-      });
+      if (food && rent && transport) {
+        await prisma.expense.createMany({
+          data: [
+            {
+              amount: 12.5,
+              date: new Date('2025-01-05'),
+              description: 'Coffee & croissant',
+              userId: user.id,
+              categoryId: food.id,
+            },
+            {
+              amount: 800,
+              date: new Date('2025-01-01'),
+              description: 'January rent',
+              userId: user.id,
+              categoryId: rent.id,
+            },
+            {
+              amount: 65,
+              date: new Date('2025-01-03'),
+              description: 'Monthly transit pass',
+              userId: user.id,
+              categoryId: transport.id,
+            },
+          ],
+        });
+      }
     }
 
-    // 3. Only add the demo expense if user has no expenses yet
-    const existingCount = await prisma.expense.count({
-      where: { userId: user.id },
-    });
-
-    if (existingCount === 0) {
-      await prisma.expense.create({
-        data: {
-          amount: 25.5,
-          date: new Date(),
-          description: 'Coffee & pastry',
-          userId: user.id,
-          categoryId: foodCategory.id,
-        },
-      });
-    }
-
-    res.json({
-      ok: true,
-      userId: user.id,
-      message: 'Seed completed',
-      alreadyHadExpenses: existingCount > 0,
-    });
-  } catch (error) {
-    console.error('Seed error:', error);
+    res.json({ ok: true, message: 'Seed complete (or already seeded)' });
+  } catch (err) {
+    console.error('Seed error:', err);
     res.status(500).json({ ok: false, error: 'Seed failed' });
   }
+});
+
+/** Get all expenses for the demo user */
+app.get('/api/expenses', async (_req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { email: 'demo@budget.app' } });
+    if (!user) return res.json([]);
+
+    const expenses = await prisma.expense.findMany({
+      where: { userId: user.id },
+      include: { category: true },
+      orderBy: { date: 'asc' },
+    });
+
+    res.json(expenses);
+  } catch (err) {
+    console.error('Get expenses error:', err);
+    res.status(500).json({ error: 'Failed to load expenses' });
+  }
+});
+
+/** Create a new expense for the demo user */
+app.post('/api/expenses', async (req, res) => {
+  try {
+    const { amount, date, categoryName, description } = req.body;
+
+    if (amount == null || !date || !categoryName) {
+      return res.status(400).json({ error: 'amount, date, and categoryName are required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: 'demo@budget.app' } });
+    if (!user) return res.status(400).json({ error: 'Demo user not found. Run /api/seed first.' });
+
+    // Find or create the category for this user
+    let category = await prisma.category.findFirst({ where: { name: categoryName, userId: user.id } });
+    if (!category) {
+      category = await prisma.category.create({ data: { name: categoryName, userId: user.id } });
+    }
+
+    const newExpense = await prisma.expense.create({
+      data: {
+        amount: Number(amount),
+        date: new Date(date),
+        description,
+        userId: user.id,
+        categoryId: category.id,
+      },
+      include: { category: true },
+    });
+
+    res.status(201).json(newExpense);
+  } catch (err) {
+    console.error('Create expense error:', err);
+    res.status(500).json({ error: 'Failed to create expense' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`API running on http://localhost:${PORT}`);
 });
