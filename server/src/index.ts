@@ -137,6 +137,30 @@ app.post('/api/expenses', async (req, res) => {
   }
 });
 
+app.delete('/api/expenses/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense id' });
+    }
+
+    const user = await prisma.user.findUnique({ where : { email: 'demo@budget.app' } });
+    if (!user) return res.status(400).json({ error: 'Demo user not found.' });
+
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing || existing.userId != user.id) {
+      return res.status(400).json({ error : 'Expense not found' });
+    }
+    await prisma.expense.delete({ where: { id }});
+    return res.status(204).send();
+
+
+  } catch (err) {
+    console.error('Delete expense error:', err);
+    res.status(500).json({ error: 'Failed to delete expense' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });

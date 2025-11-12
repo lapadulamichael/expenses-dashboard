@@ -23,3 +23,10 @@ export async function createExpense(data: {
     if (!res.ok) throw new Error(`Failed to create expense ($res.status})`);
     return res.json();
 }
+
+export async function deleteExpense(id: number) {
+    const res = await fetch(`${API_URL}/api/expenses/${id}`, { method: 'DELETE' });
+    if (!res.ok && res.status != 204) {
+        throw new Error(`Failed to delete expense (${res.status})`);
+    }
+}

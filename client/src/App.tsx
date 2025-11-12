@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getExpenses } from './api/client';
 import { createExpense } from './api/client';
+import { deleteExpense } from './api/client';
 import type { Expense } from './types';
 
 function formatCurrency(n: number) {
@@ -57,6 +58,17 @@ export default function App() {
       alert('Failed to create expense.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await deleteExpense(id);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete expense1');
+      setExpenses(await getExpenses());
     }
   }
 
@@ -148,6 +160,7 @@ export default function App() {
                   <th style={th}>Category</th>
                   <th style={th}>Description</th>
                   <th style={{ ...th, textAlign: 'right' }}>Amount</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -158,6 +171,9 @@ export default function App() {
                     <td style={td}>{e.description ?? '—'}</td>
                     <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       {formatCurrency(e.amount)}
+                    </td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      <button onClick={() => handleDelete(e.id)}>Delete</button>
                     </td>
                   </tr>
                 ))}
