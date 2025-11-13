@@ -161,6 +161,46 @@ app.delete('/api/expenses/:id', async (req, res) => {
   }
 });
 
+app.put('/api/expenses/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { amount, date, categoryName, description } = req.body;
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense id' });
+    }
+
+    const user = await prisma.user.findUnique({ where : { email: 'demo@budget.app' } });
+    if (!user) return res.status(400).json({ error: 'Demo user not found.' });
+
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing || existing.userId != user.id) {
+      return res.status(400).json({ error : 'Expense not found' });
+    }
+    
+    // Find or create the category for this user
+    let category = await prisma.category.findFirst({ where: { name: categoryName, userId: user.id } });
+    if (!category) {
+      category = await prisma.category.create({ data: { name: categoryName, userId: user.id } });
+    }
+
+    const updated = await prisma.expense.update({
+      where: { id },
+      data: {
+        amount: Number(amount),
+        date: new Date(date),
+        description,
+        categoryId: category.id,
+      },
+      include: { category: true },
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error('Update expense error:', err);
+    res.status(500).json({ error: 'Failed to update expense' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });

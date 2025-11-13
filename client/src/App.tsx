@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getExpenses } from './api/client';
 import { createExpense } from './api/client';
 import { deleteExpense } from './api/client';
+import { updateExpense } from './api/client';
 import type { Expense } from './types';
 
 function formatCurrency(n: number) {
@@ -23,7 +24,15 @@ export default function App() {
     description: '',
     categoryName: '',
   });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    amount: '',
+    date: '',
+    description: '',
+    categoryName: '',
+  });
   const [submitting, setSubmitting] = useState(false);
+  
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -70,6 +79,42 @@ export default function App() {
       alert('Failed to delete expense1');
       setExpenses(await getExpenses());
     }
+  }
+
+  function startEdit(e: Expense) {
+    setEditingId(e.id);
+    setEditForm({
+      amount: String(e.amount),
+      date: e.date.slice(0, 10), // convert ISO to yyyy-mm-dd
+      description: e.description ?? '',
+      categoryName: e.category?.name ?? '',
+    });
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    try {
+      const updated = await updateExpense(editingId, {
+        amount: parseFloat(editForm.amount),
+        date: editForm.date,
+        categoryName: editForm.categoryName,
+        description: editForm.description,
+      });
+      // update local list
+      setExpenses(prev =>
+        prev.map(exp => (exp.id === editingId ? updated : exp))
+      );
+      setEditingId(null);
+    } catch (err) {
+      console.error(err);
+      alert('Update failed');
+    }
+  }
+
+  function handleEditChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value } = ev.target;
+    setEditForm(f => ({ ...f, [name]: value }));
   }
 
   useEffect(() => {
@@ -166,15 +211,41 @@ export default function App() {
               <tbody>
                 {expenses.map((e) => (
                   <tr key={e.id}>
-                    <td style={td}>{formatDate(e.date)}</td>
-                    <td style={td}>{e.category?.name ?? '—'}</td>
-                    <td style={td}>{e.description ?? '—'}</td>
-                    <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {formatCurrency(e.amount)}
-                    </td>
-                    <td style={{ ...td, textAlign: 'right' }}>
-                      <button onClick={() => handleDelete(e.id)}>Delete</button>
-                    </td>
+                    {editingId === e.id ? (
+                      <>
+                        <td style={td}>
+                          <input type="date" name="date" value={editForm.date}
+                                onChange={handleEditChange} />
+                        </td>
+                        <td style={td}>
+                          <input name="categoryName" value={editForm.categoryName}
+                                onChange={handleEditChange} />
+                        </td>
+                        <td style={td}>
+                          <input name="description" value={editForm.description}
+                                onChange={handleEditChange} />
+                        </td>
+                        <td style={{ ...td, textAlign: 'right' }}>
+                          <input type="number" name="amount" value={editForm.amount}
+                                onChange={handleEditChange} />
+                        </td>
+                        <td style={{ ...td, textAlign: 'right' }}>
+                          <button onClick={handleUpdate}>Save</button>
+                          <button onClick={() => setEditingId(null)}>Cancel</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={td}>{formatDate(e.date)}</td>
+                        <td style={td}>{e.category?.name ?? '—'}</td>
+                        <td style={td}>{e.description ?? '—'}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{formatCurrency(e.amount)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>
+                          <button onClick={() => startEdit(e)}>Edit</button>
+                          <button onClick={() => handleDelete(e.id)}>Delete</button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>

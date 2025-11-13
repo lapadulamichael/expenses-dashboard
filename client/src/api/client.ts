@@ -1,4 +1,5 @@
 import type { Category } from "../types";
+import type { Expense } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -29,4 +30,18 @@ export async function deleteExpense(id: number) {
     if (!res.ok && res.status != 204) {
         throw new Error(`Failed to delete expense (${res.status})`);
     }
+}
+
+export async function updateExpense(
+  id: number,
+  data: { amount: number; date: string; categoryName: string; description?: string }
+): Promise<Expense> {
+  const res = await fetch(`${API_URL}/api/expenses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to update expense (${res.status})`);
+  const json: Expense = await res.json();
+  return json;
 }
