@@ -3,8 +3,27 @@ import type { Expense } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export async function getExpenses() {
-  const res = await fetch(`${API_URL}/api/expenses`);
+type ExpenseFilters = {
+  month?: string;      // "YYYY-MM"
+  category?: string;   // category name
+};
+
+export async function getExpenses(filters: ExpenseFilters = {}) {
+  const params = new URLSearchParams();
+
+  if (filters.month) {
+    params.set('month', filters.month);
+  }
+  if (filters.category) {
+    params.set('category', filters.category);
+  }
+
+  const query = params.toString();
+  const url = query
+    ? `${API_URL}/api/expenses?${query}`
+    : `${API_URL}/api/expenses`;
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load expenses (${res.status})`);
   return res.json();
 }

@@ -82,14 +82,44 @@ app.get('/api/seed', async (_req, res) => {
   }
 });
 
-/** Get all expenses for the demo user */
-app.get('/api/expenses', async (_req, res) => {
+app.get('/api/expenses', async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email: 'demo@budget.app' } });
     if (!user) return res.json([]);
+    
+    const { month, category } = req.query as {
+      month?: string;
+      category?: string;
+    };
+
+    const where: any = {
+      userId: user.id,
+    };
+
+    if (month) {
+      const [yearStr, monthStr] = month.split('-');
+      const year = Number(yearStr);
+      const monthIndex = Number(monthStr) - 1;
+
+      if (!Number.isNaN(year) && !Number.isNaN(monthIndex)) {
+        const start = new Date(year, monthIndex, 1);
+        const end = new Date(year, monthIndex + 1, 1);
+
+        where.date = {
+          gte: start,
+          lt: end,
+        };
+      }
+    }
+
+    if (category) {
+      where.category = {
+        name: category,
+      };
+    }
 
     const expenses = await prisma.expense.findMany({
-      where: { userId: user.id },
+      where,
       include: { category: true },
       orderBy: { date: 'asc' },
     });

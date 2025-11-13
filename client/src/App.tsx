@@ -32,6 +32,9 @@ export default function App() {
     categoryName: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [filterMonth, setFilterMonth] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+
   
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -121,7 +124,10 @@ export default function App() {
     (async () => {
       try {
         setLoading(true);
-        const data: Expense[] = await getExpenses();
+        const data: Expense[] = await getExpenses({
+          month: filterMonth || undefined,
+          category: filterCategory || undefined,
+        });
         setExpenses(data);
         setError(null);
       } catch (err) {
@@ -131,7 +137,15 @@ export default function App() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [filterMonth, filterCategory]);
+
+      const categories = Array.from(
+        new Set(
+          expenses
+            .map((e) => e.category?.name)
+            .filter((name): name is string => !!name)
+        )
+      );
 
   return (
     <div style={{ fontFamily: 'system-ui', padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
@@ -192,7 +206,33 @@ export default function App() {
           {submitting ? 'Adding…' : 'Add Expense'}
         </button>
       </form>
+      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+        {/* Month filter */}
+        <div>
+          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Month</label>
+          <input
+            type="month"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+          />
+        </div>
 
+        {/* Category filter */}
+        <div>
+          <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Category</label>
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+          >
+            <option value="">All</option>
+            {categories.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       {!loading && !error && (
         <>
           {expenses.length === 0 ? (
