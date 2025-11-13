@@ -231,6 +231,28 @@ app.put('/api/expenses/:id', async (req, res) => {
   }
 });
 
+app.get('/api/categories', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: 'demo@budget.app' },
+    });
+    if (!user) return res.json([]);
+
+    const categories = await prisma.category.findMany({
+      where: { 
+        userId: user.id,
+        expenses: { some: {} },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(categories);
+  } catch (err) {
+    console.error('Get categories error:', err);
+    res.status(500).json({ error: 'Failed to load categories' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
