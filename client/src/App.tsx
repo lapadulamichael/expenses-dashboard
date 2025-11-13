@@ -139,13 +139,16 @@ export default function App() {
     })();
   }, [filterMonth, filterCategory]);
 
-      const categories = Array.from(
-        new Set(
+      const categoriesSet = new Set(
           expenses
             .map((e) => e.category?.name)
             .filter((name): name is string => !!name)
-        )
       );
+      if (filterCategory && !categoriesSet.has(filterCategory)) {
+        categoriesSet.add(filterCategory);
+      }
+
+      const categories = Array.from(categoriesSet);
 
   return (
     <div style={{ fontFamily: 'system-ui', padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
