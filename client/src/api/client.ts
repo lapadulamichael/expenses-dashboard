@@ -64,3 +64,9 @@ export async function updateExpense(
   const json: Expense = await res.json();
   return json;
 }
+
+export async function getCategories(): Promise<Category[]> {
+  const res = await fetch(`${API_URL}/api/categories`);
+  if (!res.ok) throw new Error(`Failed to load categories (${res.status})`);
+  return res.json();
+}
