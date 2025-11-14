@@ -251,6 +251,10 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
+app.get('/', (_req, res) => {
+  res.send('OK from expenses-dashboard API');
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
