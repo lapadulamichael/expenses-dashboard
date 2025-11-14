@@ -8,8 +8,6 @@ const prisma = new PrismaClient();
 app.use(cors());            // allow requests from Vite (http://localhost:5173) during dev
 app.use(express.json());    // parse JSON bodies
 
-const PORT = 3000;
-
 /** Health check */
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok from API' });
@@ -253,6 +251,8 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`);
+  console.log(`API running on port ${PORT}`); // IMPORTANT
 });
