@@ -184,7 +184,7 @@ export default function App() {
     <div style={{ fontFamily: 'system-ui', paddingLeft: '2rem', paddingRight: '2rem', paddingTop: '0.5rem', maxWidth: 900, margin: '0 auto' }}>
       <h1 style={{ marginBottom: '0.5rem', margin: '1rem'}}>Expense Tracker (Demo)</h1>
 
-      {loading && <p>Loading…</p>}
+      {loading && <p>Loading… (Render's free tier takes a moment on cold start)</p>}
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
 
       {/* Summary bar */}
