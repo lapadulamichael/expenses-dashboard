@@ -5,6 +5,11 @@ import { PrismaClient } from '@prisma/client';
 const app = express();
 const prisma = new PrismaClient();
 
+function seedDate(dateStr: string) {
+  // Store as noon UTC to avoid timezone shifting the calendar day
+  return new Date(`${dateStr}T12:00:00.000Z`);
+}
+
 app.use(cors());            // allow requests from Vite (http://localhost:5173) during dev
 app.use(express.json());    // parse JSON bodies
 
@@ -49,21 +54,21 @@ app.get('/api/seed', async (_req, res) => {
           data: [
             {
               amount: 12.5,
-              date: new Date('2025-01-05'),
+              date: seedDate('2025-01-05'),
               description: 'Coffee & croissant',
               userId: user.id,
               categoryId: food.id,
             },
             {
               amount: 800,
-              date: new Date('2025-01-01'),
+              date: seedDate('2025-01-01'),
               description: 'January rent',
               userId: user.id,
               categoryId: rent.id,
             },
             {
               amount: 65,
-              date: new Date('2025-01-03'),
+              date: seedDate('2025-01-03'),
               description: 'Monthly transit pass',
               userId: user.id,
               categoryId: transport.id,

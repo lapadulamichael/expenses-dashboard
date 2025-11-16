@@ -129,7 +129,7 @@ export default function App() {
     try {
       const updated = await updateExpense(editingId, {
         amount: parseFloat(editForm.amount),
-        date: toServerDate(form.date),
+        date: toServerDate(editForm.date),
         categoryName: editForm.categoryName,
         description: editForm.description,
       });
