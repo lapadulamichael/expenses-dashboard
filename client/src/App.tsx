@@ -56,6 +56,12 @@ export default function App() {
     total: stats.total,
   }));
 
+  function toServerDate(dateStr: string) {
+    // dateStr is "YYYY-MM-DD" from <input type="date">
+    // Store as noon UTC to avoid timezone shifts changing the day
+    return `${dateStr}T12:00:00.000Z`;
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
@@ -73,7 +79,7 @@ export default function App() {
       setSubmitting(true);
       await createExpense({
         amount: parseFloat(form.amount),
-        date: form.date,
+        date: toServerDate(form.date),
         description: form.description,
         categoryName: form.categoryName,
       });
@@ -123,7 +129,7 @@ export default function App() {
     try {
       const updated = await updateExpense(editingId, {
         amount: parseFloat(editForm.amount),
-        date: editForm.date,
+        date: toServerDate(form.date),
         categoryName: editForm.categoryName,
         description: editForm.description,
       });
